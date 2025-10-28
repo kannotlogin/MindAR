@@ -7,7 +7,7 @@
 
   <body>
     <a-scene
-      mindar-image="imageTargetSrc: test.mind;"
+      mindar-image="imageTargetSrc: multi.mind;"
       color-space="sRGB"
       renderer="colorManagement: true, physicallyCorrectLights"
       vr-mode-ui="enabled: false"
@@ -15,22 +15,23 @@
       embedded
     >
       <a-assets>
-        <!-- jouw 3D modellen -->
+        <!-- target 0 assets -->
         <a-asset-item id="mainModel" src="model.glb"></a-asset-item>
         <a-asset-item id="occluderModel" src="occluder.glb"></a-asset-item>
+
+        <!-- target 1 asset -->
+        <a-asset-item id="model2" src="Depthimg.glb"></a-asset-item>
       </a-assets>
 
       <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-      <!-- target -->
-      <a-entity mindar-image-target="targetIndex: 0">
-        <!-- 2D referentie, niet verplicht -->
-
+      <!-- Anchor voor eerste foto (targetIndex: 0) -->
+      <a-entity mindar-image-target="targetIndex: 1">
         <!-- jouw 3D model -->
         <a-gltf-model
           id="myModel"
           src="#mainModel"
-          position="0 0 0.02"
+          position="0 0 0.0"
           rotation="90 0 0"
           scale="0.5 0.5 0.5"
         ></a-gltf-model>
@@ -45,10 +46,22 @@
           material="color: #000; shader: standard; opacity: 1.0; side: double; depthWrite: true; visible: true;"
         ></a-gltf-model>
       </a-entity>
+
+      <!-- Anchor voor tweede foto (targetIndex: 1) -->
+      <a-entity mindar-image-target="targetIndex: 0">
+        <!-- alleen 3D model, geen occluder -->
+        <a-gltf-model
+          id="myModel2"
+          src="#model2"
+          position="0 0 0.0"
+          rotation="0 -90 0"
+          scale="0.5 0.5 0.5"
+        ></a-gltf-model>
+      </a-entity>
     </a-scene>
 
     <script>
-      // Zorg dat occluder vóór je model rendert (zodat hij kan "verbergen")
+      // Zorg dat occluder vóór je model rendert (werkt alleen voor target 0)
       AFRAME.registerComponent("occluder", {
         init: function () {
           this.el.addEventListener("model-loaded", () => {

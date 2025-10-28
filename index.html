@@ -1,112 +1,70 @@
-<!doctype html>
 <html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>MindAR occluder test - fullscreen & debug</title>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <script src="https://aframe.io/releases/1.6.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  </head>
 
-  <style>
-    html,body { height:100%; margin:0; background:#000; }
-    a-scene { width:100%; height:100%; display:block; }
-    /* eenvoudige overlay voor logs */
-    #log { position:fixed; left:8px; bottom:8px; z-index:9999;
-           background:rgba(0,0,0,0.5); color:#fff; padding:6px 8px; font-family:monospace; font-size:12px; border-radius:6px; }
-  </style>
+  <body>
+    <a-scene
+      mindar-image="imageTargetSrc: test.mind;"
+      color-space="sRGB"
+      renderer="colorManagement: true, physicallyCorrectLights"
+      vr-mode-ui="enabled: false"
+      device-orientation-permission-ui="enabled: false"
+      embedded
+    >
+      <a-assets>
+        <!-- jouw 3D modellen -->
+        <a-asset-item id="mainModel" src="model.glb"></a-asset-item>
+        <a-asset-item id="occluderModel" src="occluder.glb"></a-asset-item>
+      </a-assets>
 
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-</head>
-<body>
-  <div id="log">Log: starting...</div>
+      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-  <a-scene mindar-image="imageTargetSrc: test.mind;"
-           embedded
-           color-space="sRGB"
-           renderer="colorManagement: true, physicallyCorrectLights"
-           vr-mode-ui="enabled: false">
+      <!-- target -->
+      <a-entity mindar-image-target="targetIndex: 0">
+        <!-- 2D referentie, niet verplicht -->
 
-    <a-assets>
-      <!-- Zorg dat deze paden correct zijn voor jouw setup -->
-      <a-asset-item id="occluder" src="occluder.glb"></a-asset-item>
-      <a-asset-item id="model"    src="model.glb"></a-asset-item>
-    </a-assets>
+        <!-- jouw 3D model -->
+        <a-gltf-model
+          id="myModel"
+          src="#mainModel"
+          position="0 0 0.02"
+          rotation="90 0 0"
+          scale="0.5 0.5 0.5"
+        ></a-gltf-model>
 
-    <!-- Anchor voor target 0 -->
-    <a-entity mindar-image-target="targetIndex: 0" id="anchor0">
-      <!-- Occluder: we zetten tijdelijk colorWrite true (zichtbaar) voor debug.
-           Als alles ok is zet je colorWrite:false of gebruik de script fallback. -->
-      <a-gltf-model id="occlModel" src="#occluder" position="0 0 0" rotation="0 0 0" scale="1 1 1"></a-gltf-model>
+        <!-- jouw occluder -->
+        <a-gltf-model
+          id="myOccluder"
+          src="#occluderModel"
+          position="0 0 0"
+          rotation="90 0 0"
+          scale="0.5 0.5 0.5"
+          material="color: #000; shader: standard; opacity: 1.0; side: double; depthWrite: true; visible: true;"
+        ></a-gltf-model>
+      </a-entity>
+    </a-scene>
 
-      <!-- Zichtbaar model (start iets naar voren zodat je het zeker ziet) -->
-      <a-gltf-model id="visModel" src="#model" position="0 0 0.03" rotation="0 0 0" scale="0.5 0.5 0.5"></a-gltf-model>
-    </a-entity>
-
-    <a-camera position="0 0 0"></a-camera>
-  </a-scene>
-
-  <script>
-    const logEl = id => { document.getElementById('log').innerText = 'Log: ' + id; console.log(id); };
-
-    window.addEventListener('load', () => {
-      logEl('page loaded - waiting for assets...');
-
-      // wacht tot assets geladen zijn en scene klaar
-      const occl = document.querySelector('#occlModel');
-      const vis = document.querySelector('#visModel');
-      const anchor = document.querySelector('#anchor0');
-
-      // Handige debug: laat zien wanneer modellen geladen zijn
-      occl.addEventListener('model-loaded', () => {
-        logEl('occluder model-loaded');
-        // temporarily colorWrite true so we can see the occluder; change later
-        const obj = occl.getObject3D('mesh');
-        if (obj) obj.traverse(node => { if (node.isMesh && node.material){ node.material.colorWrite = true; node.material.needsUpdate = true; }});
-      });
-
-      vis.addEventListener('model-loaded', () => {
-        logEl('visible model loaded');
-        const obj = vis.getObject3D('mesh');
-        if (obj){
-          // print bounding box so je scale kan aflezen
-          const box = new THREE.Box3().setFromObject(obj);
-          console.log('model bbox', box.min, box.max);
-        }
-      });
-
-      // MindAR start event: camera permission + tracking
-      const scene = document.querySelector('a-scene');
-      scene.addEventListener('renderstart', () => {
-        logEl('AR renderer started - allow camera if prompted');
-      });
-
-      // Kleine helper om occluder 'onzichtbaar maar depth-write' te maken
-      function makeOccluderHidden(gltfEl){
-        gltfEl.addEventListener('model-loaded', () => {
-          const obj = gltfEl.getObject3D('mesh');
-          if (!obj) { console.warn('occluder mesh missing'); return; }
-          obj.traverse(node => {
-            if (node.isMesh && node.material){
-              node.material.colorWrite = false;   // geen kleur tekenen
-              node.material.depthTest = true;
-              node.material.depthWrite = true;
-              node.material.transparent = true;
-              node.material.needsUpdate = true;
+    <script>
+      // Zorg dat occluder vóór je model rendert (zodat hij kan "verbergen")
+      AFRAME.registerComponent("occluder", {
+        init: function () {
+          this.el.addEventListener("model-loaded", () => {
+            const mesh = this.el.getObject3D("mesh");
+            if (mesh) {
+              mesh.traverse((node) => {
+                if (node.isMesh) {
+                  node.material.colorWrite = false; // niet tekenen, enkel depth
+                }
+              });
             }
           });
-          logEl('occluder set to depth-only (invisible)');
-        });
-      }
+        },
+      });
 
-      // Gebruik deze functie als je zeker weet dat occluder en model goed staan:
-      // makeOccluderHidden(occl);
-
-      // debug commands: open console en run:
-      // document.querySelector('#visModel').setAttribute('scale','0.7 0.7 0.7');
-      // document.querySelector('#visModel').setAttribute('position','0 0 0.02');
-      // of vis.getObject3D('mesh') ... voor geavanceerd debuggen
-
-      logEl('ready - check console (F12) en network tab');
-    });
-  </script>
-</body>
+      document.querySelector("#myOccluder").setAttribute("occluder", "");
+    </script>
+  </body>
 </html>

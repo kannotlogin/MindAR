@@ -1,0 +1,60 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>MindAR 3D Scene in Book Example</title>
+
+    <!-- A-Frame en MindAR -->
+    <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  </head>
+
+  <body>
+    <a-scene mindar-image="imageTargetSrc: test.mind;"
+             embedded
+             color-space="sRGB"
+             renderer="colorManagement: true, physicallyCorrectLights"
+             vr-mode-ui="enabled: false">
+
+      <a-assets>
+        <!-- Vervang dit later met jouw bestanden -->
+        <a-asset-item id="model" src="model.glb"></a-asset-item>
+        <a-asset-item id="occluder" src="occluder.glb"></a-asset-item>
+      </a-assets>
+
+      <!-- Dit is de anchor voor de afbeelding -->
+      <a-entity mindar-image-target="targetIndex: 0">
+        <!-- Occluder (onzichtbaar maar blokkeert achterliggende objecten) -->
+        <a-gltf-model src="#occluder" 
+                      material="colorWrite: false; depthTest: true; depthWrite: true"
+                      position="0 0 0" scale="1 1 1">
+        </a-gltf-model>
+
+        <!-- Jouw zichtbare 3D-model -->
+        <a-gltf-model src="#model"
+                      position="0 0 0.03" scale="1 1 1" rotation="0 0 0">
+        </a-gltf-model>
+      </a-entity>
+
+      <a-camera position="0 0 0"></a-camera>
+    </a-scene>
+
+    <!-- Zorg dat occluder echt onzichtbaar is -->
+    <script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const occluder = document.querySelector('[src="#occluder"]');
+        occluder.addEventListener('model-loaded', () => {
+          occluder.getObject3D('mesh').traverse(node => {
+            if (node.isMesh && node.material) {
+              node.material.colorWrite = false;
+              node.material.depthTest = true;
+              node.material.depthWrite = true;
+              node.material.needsUpdate = true;
+            }
+          });
+        });
+      });
+    </script>
+  </body>
+</html>
